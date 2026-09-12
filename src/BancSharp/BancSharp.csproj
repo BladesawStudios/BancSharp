@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>BancSharp</RootNamespace>
+    <AssemblyName>BancSharp</AssemblyName>
+    <Version>0.1.0</Version>
+    <Description>Reads Tears of the Kingdom scene placement: what actors a scene holds, where they sit, and which model each one draws.</Description>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BymlSharp\src\BymlSharp\BymlSharp.csproj" />
+    <ProjectReference Include="..\..\..\SarcSharp\src\SarcSharp\SarcSharp.csproj" />
+    <ProjectReference Include="..\..\..\ZsDicSharp\src\ZsDicSharp\ZsDicSharp.csproj" />
+  </ItemGroup>
+
+</Project>
