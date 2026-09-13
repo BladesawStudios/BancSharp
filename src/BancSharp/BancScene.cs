@@ -42,13 +42,14 @@ public static class BancScene
         List<ActorPlacement> placed = [];
         HashSet<string> visiting = new(StringComparer.OrdinalIgnoreCase);
 
-        Collect(romfs, path, Vector3.Zero, Vector3.Zero, Vector3.One, 0, placed, visiting);
+        Collect(romfs, path, Vector3.Zero, Vector3.Zero, Vector3.One, Matrix4x4.Identity,
+                0, placed, visiting);
         return placed;
     }
 
     private static void Collect(
         Romfs romfs, string path,
-        Vector3 origin, Vector3 rotation, Vector3 scale, int depth,
+        Vector3 origin, Vector3 rotation, Vector3 scale, Matrix4x4 turn, int depth,
         List<ActorPlacement> placed, HashSet<string> visiting)
     {
         if (depth > MaxDepth || !visiting.Add(path)) return;
@@ -62,14 +63,34 @@ public static class BancScene
             {
                 if (actor["Gyaml"]?.AsString() is not { } gyaml) continue;
 
-                Vector3 at = origin + Read(actor["Translate"], 0f) * scale;
-                Vector3 spin = rotation + Read(actor["Rotate"], 0f);
+                // A batch that is turned has to turn what is inside it: the offsets its
+                // actors carry are in its own frame, not the world's. Two thousand batches
+                // are turned and half of those are pitched or rolled rather than only spun
+                // about the vertical, which is what leaves a spiral of islands lying flat
+                // in a row.
+                Vector3 local = Read(actor["Translate"], 0f) * scale;
+                Vector3 at = origin + (turn.IsIdentity ? local : Vector3.Transform(local, turn));
+
+                // Its own turn, and the same turn seen from the world. Euler angles do not
+                // compose by adding, so the two are multiplied as matrices and the result
+                // read back out as angles - which is what the placement carries.
+                Vector3 own = Read(actor["Rotate"], 0f);
+                Matrix4x4 inner = Euler(own);
+                Matrix4x4 world = turn.IsIdentity ? inner : inner * turn;
+
+                Vector3 spin = turn.IsIdentity ? own : ToEuler(world);
                 Vector3 size = scale * Read(actor["Scale"], 1f);
 
                 // A batch stands in for the actors inside it rather than drawing anything.
+                // Its own scale describes the volume it covers, not a transform for what is
+                // inside - a tar field is an AreaMergeTar scaled fifty to two hundred times,
+                // and the pieces it names are already laid out in metres about its centre.
+                // Passing that scale down multiplies an eighty-metre offset into sixteen
+                // kilometres and draws a twelve-metre puddle three quarters of a kilometre
+                // across. Only where it stands carries into it.
                 if (actor["Dynamic"]?["BancPath"]?.AsString() is { } batch && romfs.Exists(batch))
                 {
-                    Collect(romfs, batch, at, spin, size, depth + 1, placed, visiting);
+                    Collect(romfs, batch, at, spin, Vector3.One, world, depth + 1, placed, visiting);
                     continue;
                 }
 
@@ -82,6 +103,33 @@ public static class BancScene
         {
             visiting.Remove(path);
         }
+    }
+
+    /// <summary>The rotation a placement's Euler angles describe, applied X, then Y, then Z.</summary>
+    private static Matrix4x4 Euler(Vector3 angles)
+        => Matrix4x4.CreateRotationX(angles.X)
+         * Matrix4x4.CreateRotationY(angles.Y)
+         * Matrix4x4.CreateRotationZ(angles.Z);
+
+    /// <summary>
+    /// The X-then-Y-then-Z Euler angles of a rotation, inverting <see cref="Euler"/>.
+    /// </summary>
+    /// <remarks>
+    /// For row vectors the product is
+    /// <c>[[cy*cz, cy*sz, -sy], [sx*sy*cz - cx*sz, sx*sy*sz + cx*cz, sx*cy], [...]]</c>, so the
+    /// middle angle comes straight out of M13 and the other two out of a pair of ratios. Where
+    /// the middle angle is a quarter turn the other two collapse into one and the first is
+    /// taken as zero, which is the usual convention.
+    /// </remarks>
+    private static Vector3 ToEuler(Matrix4x4 m)
+    {
+        float sy = Math.Clamp(-m.M13, -1f, 1f);
+        float y = MathF.Asin(sy);
+
+        if (MathF.Abs(sy) > 0.999999f)
+            return new Vector3(0f, y, MathF.Atan2(-m.M21, m.M22));
+
+        return new Vector3(MathF.Atan2(m.M23, m.M33), y, MathF.Atan2(m.M12, m.M11));
     }
 
     /// <summary>
