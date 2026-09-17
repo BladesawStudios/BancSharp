@@ -6,7 +6,8 @@
     <Nullable>enable</Nullable>
     <RootNamespace>BancSharp</RootNamespace>
     <AssemblyName>BancSharp</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
+    <Authors>Aiden A</Authors>
     <Description>Reads Tears of the Kingdom scene placement: what actors a scene holds, where they sit, and which model each one draws.</Description>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
   </PropertyGroup>
