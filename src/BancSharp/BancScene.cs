@@ -8,7 +8,12 @@ public sealed record ActorPlacement(
     Vector3 Translate,
     Vector3 Rotate,
     Vector3 Scale,
-    ulong Hash);
+    ulong Hash)
+{
+    public string? PresenceFlag { get; init; }
+
+    public bool PresenceNegated { get; init; }
+}
 
 public static class BancScene
 {
@@ -20,14 +25,15 @@ public static class BancScene
         HashSet<string> visiting = new(StringComparer.OrdinalIgnoreCase);
 
         Collect(romfs, path, Vector3.Zero, Vector3.Zero, Vector3.One, Matrix4x4.Identity,
-                0, placed, visiting);
+                0, placed, visiting, null, false);
         return placed;
     }
 
     private static void Collect(
         Romfs romfs, string path,
         Vector3 origin, Vector3 rotation, Vector3 scale, Matrix4x4 turn, int depth,
-        List<ActorPlacement> placed, HashSet<string> visiting)
+        List<ActorPlacement> placed, HashSet<string> visiting,
+        string? outerFlag, bool outerNegated)
     {
         if (depth > MaxDepth || !visiting.Add(path)) return;
 
@@ -50,13 +56,23 @@ public static class BancScene
                 Vector3 spin = turn.IsIdentity ? own : ToEuler(world);
                 Vector3 size = scale * Read(actor["Scale"], 1f);
 
+                string? flag = actor["Presence"]?["FlagName"]?.AsString();
+                bool negated = flag is not null && actor["Presence"]?["IsNegation"]?.Type is BymlType.Bool
+                    && actor["Presence"]!["IsNegation"]!.Bool;
+                if (flag is null) { flag = outerFlag; negated = outerNegated; }
+
                 if (actor["Dynamic"]?["BancPath"]?.AsString() is { } batch && romfs.Exists(batch))
                 {
-                    Collect(romfs, batch, at, spin, Vector3.One, world, depth + 1, placed, visiting);
+                    Collect(romfs, batch, at, spin, Vector3.One, world, depth + 1, placed, visiting,
+                            flag, negated);
                     continue;
                 }
 
-                placed.Add(new ActorPlacement(gyaml, at, spin, size, actor["Hash"]?.Type is BymlType.UInt64 ? actor["Hash"]!.UInt64 : 0));
+                placed.Add(new ActorPlacement(gyaml, at, spin, size, actor["Hash"]?.Type is BymlType.UInt64 ? actor["Hash"]!.UInt64 : 0)
+                {
+                    PresenceFlag = flag,
+                    PresenceNegated = negated,
+                });
             }
         }
         finally
