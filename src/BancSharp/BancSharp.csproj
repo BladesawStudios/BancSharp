@@ -13,9 +13,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\BymlSharp\src\BymlSharp\BymlSharp.csproj" />
-    <ProjectReference Include="..\..\..\SarcSharp\src\SarcSharp\SarcSharp.csproj" />
-    <ProjectReference Include="..\..\..\ZsDicSharp\src\ZsDicSharp\ZsDicSharp.csproj" />
+    <ProjectReference Include="..\..\lib\BymlSharp\src\BymlSharp\BymlSharp.csproj" />
+    <ProjectReference Include="..\..\lib\SarcSharp\src\SarcSharp\SarcSharp.csproj" />
+    <ProjectReference Include="..\..\lib\ZsDicSharp\src\ZsDicSharp\ZsDicSharp.csproj" />
   </ItemGroup>
 
 </Project>
