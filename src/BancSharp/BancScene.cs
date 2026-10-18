@@ -13,6 +13,12 @@ public sealed record ActorPlacement(
     public string? PresenceFlag { get; init; }
 
     public bool PresenceNegated { get; init; }
+
+    // The batch actor this placement was read out of, when it came from a merged file: the game judges the batch, not the placements inside it.
+    public string? Group { get; init; }
+
+    // That batch actor's own hash, which is how the game names it.
+    public ulong GroupHash { get; init; }
 }
 
 public static class BancScene
@@ -24,7 +30,7 @@ public static class BancScene
         List<ActorPlacement> placed = [];
         HashSet<string> visiting = new(StringComparer.OrdinalIgnoreCase);
 
-        Collect(romfs, path, default, null, 0, placed, visiting, null, false);
+        Collect(romfs, path, default, null, 0, placed, visiting, null, false, null, 0);
         return placed;
     }
 
@@ -37,7 +43,7 @@ public static class BancScene
         Romfs romfs, string path,
         (double X, double Y, double Z) origin, double[,]? turn, int depth,
         List<ActorPlacement> placed, HashSet<string> visiting,
-        string? outerFlag, bool outerNegated)
+        string? outerFlag, bool outerNegated, string? outerGroup, ulong outerGroupHash)
     {
         if (depth > MaxDepth || !visiting.Add(path)) return;
 
@@ -69,7 +75,8 @@ public static class BancScene
 
                 if (actor["Dynamic"]?["BancPath"]?.AsString() is { } batch && romfs.Exists(batch))
                 {
-                    Collect(romfs, batch, at, world, depth + 1, placed, visiting, flag, negated);
+                    Collect(romfs, batch, at, world, depth + 1, placed, visiting, flag, negated, outerGroup ?? gyaml,
+                        outerGroup is not null ? outerGroupHash : actor["Hash"]?.Type is BymlType.UInt64 ? actor["Hash"]!.UInt64 : 0);
                     continue;
                 }
 
@@ -78,6 +85,8 @@ public static class BancScene
                 {
                     PresenceFlag = flag,
                     PresenceNegated = negated,
+                    Group = outerGroup,
+                    GroupHash = outerGroupHash,
                 });
             }
         }
