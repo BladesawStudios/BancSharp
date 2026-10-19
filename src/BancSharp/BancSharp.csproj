@@ -10,12 +10,13 @@
     <Authors>Aiden A</Authors>
     <Description>Reads Tears of the Kingdom scene placement: what actors a scene holds, where they sit, and which model each one draws.</Description>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <BancLibRoot Condition="'$(BancLibRoot)' == ''">$(MSBuildThisFileDirectory)..\..\lib</BancLibRoot>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\BymlSharp\src\BymlSharp\BymlSharp.csproj" />
-    <ProjectReference Include="..\..\lib\SarcSharp\src\SarcSharp\SarcSharp.csproj" />
-    <ProjectReference Include="..\..\lib\ZsDicSharp\src\ZsDicSharp\ZsDicSharp.csproj" />
+    <ProjectReference Include="$(BancLibRoot)\BymlSharp\src\BymlSharp\BymlSharp.csproj" />
+    <ProjectReference Include="$(BancLibRoot)\SarcSharp\src\SarcSharp\SarcSharp.csproj" />
+    <ProjectReference Include="$(BancLibRoot)\ZsDicSharp\src\ZsDicSharp\ZsDicSharp.csproj" />
   </ItemGroup>
 
 </Project>
