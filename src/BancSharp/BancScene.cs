@@ -19,6 +19,9 @@ public sealed record ActorPlacement(
 
     // That batch actor's own hash, which is how the game names it.
     public ulong GroupHash { get; init; }
+
+    // The actors the placement equips, by their EquipmentUser_ key (EquipmentUser_Weapon -> Weapon_Sword_108); null when it names none.
+    public IReadOnlyDictionary<string, string>? Equipment { get; init; }
 }
 
 public static class BancScene
@@ -87,6 +90,7 @@ public static class BancScene
                     PresenceNegated = negated,
                     Group = outerGroup,
                     GroupHash = outerGroupHash,
+                    Equipment = EquipmentOf(actor["Dynamic"]),
                 });
             }
         }
@@ -135,6 +139,20 @@ public static class BancScene
             return new Vector3(0f, (float)y, (float)Math.Atan2(-m[1, 0], m[1, 1]));
 
         return new Vector3((float)Math.Atan2(m[1, 2], m[2, 2]), (float)y, (float)Math.Atan2(m[0, 1], m[0, 0]));
+    }
+
+    private const string EquipmentPrefix = "EquipmentUser_";
+
+    // The named EquipmentUser_ strings of an actor's Dynamic map; most actors name none, and carry nothing.
+    private static Dictionary<string, string>? EquipmentOf(Byml? dynamic)
+    {
+        if (dynamic is null || !dynamic.IsMap) return null;
+
+        Dictionary<string, string>? equipment = null;
+        foreach (var (key, value) in dynamic.AsMap)
+            if (key.StartsWith(EquipmentPrefix, StringComparison.Ordinal) && value.AsString() is { Length: > 0 } name)
+                (equipment ??= new(StringComparer.Ordinal))[key] = name;
+        return equipment;
     }
 
     private static (double X, double Y, double Z) ReadD(Byml? node, double fallback)
