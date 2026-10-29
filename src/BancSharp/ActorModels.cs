@@ -3,7 +3,11 @@ using SarcSharp;
 
 namespace BancSharp;
 
-public sealed record ActorModel(string Path, string ProjectName, string FmdbName);
+public sealed record ActorModel(string Path, string ProjectName, string FmdbName)
+{
+    // The further models the actor draws where it stands, as its ModelInfo's SubModels name them: a shrine's entrance rock draws the hall seen through its doorway.
+    public IReadOnlyList<ActorModel> SubModels { get; init; } = [];
+}
 
 public sealed class ActorModels(Romfs romfs)
 {
@@ -36,6 +40,11 @@ public sealed class ActorModels(Romfs romfs)
 
         if (string.IsNullOrEmpty(project) || string.IsNullOrEmpty(fmdb)) return null;
 
+        return Model(project, fmdb) is { } model ? model with { SubModels = SubModels(info, project) } : null;
+    }
+
+    private ActorModel? Model(string project, string fmdb)
+    {
         foreach (string extension in new[] { ".bfres.mc", ".bfres" })
         {
             string path = $"Model/{project}.{fmdb}{extension}";
@@ -43,6 +52,19 @@ public sealed class ActorModels(Romfs romfs)
         }
 
         return null;
+    }
+
+    // Each sub-model whose file is there; one that names no project is in the actor's own.
+    private List<ActorModel> SubModels(IReadOnlyList<Byml> info, string project)
+    {
+        List<ActorModel> models = [];
+        if (Field(info, "SubModels") is not { IsArray: true } list) return models;
+
+        foreach (Byml entry in list.AsArray)
+            if (entry["FmdbName"]?.AsString() is { Length: > 0 } fmdb
+                && Model(entry["ModelProjectName"]?.AsString() is { Length: > 0 } own ? own : project, fmdb) is { } model)
+                models.Add(model);
+        return models;
     }
 
     /// <summary>

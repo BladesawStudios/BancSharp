@@ -14,6 +14,13 @@ public sealed record ActorPlacement(
 
     public bool PresenceNegated { get; init; }
 
+    // The game-data flag a shrine's entrance pieces take their state from (Dynamic.DungeonIndexStr), as Dungeon021.
+    public string? DungeonIndex { get; init; }
+
+    // Which of its actor's sub-models (ActorModel.SubModels) this placement stands for, or -1 for the actor's own model. The archive places only the actor; a
+    // reader adds one of these for each sub-model, where the actor stands.
+    public int SubModel { get; init; } = -1;
+
     // The batch actor this placement was read out of, when it came from a merged file: the game judges the batch, not the placements inside it.
     public string? Group { get; init; }
 
@@ -85,6 +92,7 @@ public static class BancScene
                 {
                     PresenceFlag = flag,
                     PresenceNegated = negated,
+                    DungeonIndex = actor["Dynamic"]?["DungeonIndexStr"]?.AsString(),
                     Group = outerGroup,
                     GroupHash = outerGroupHash,
                 });
