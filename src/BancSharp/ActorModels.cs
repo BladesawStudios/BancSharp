@@ -128,7 +128,7 @@ public sealed class ActorModels(Romfs romfs)
     /// A reference as a pack entry name: <c>?Component/X.bgyml</c> is the entry as it is, and the authoring path
     /// <c>Work/Component/X.gyml</c> that <c>$parent</c> uses is the same file compiled.
     /// </summary>
-    private static string EntryName(string reference)
+    internal static string EntryName(string reference)
     {
         string name = reference.TrimStart('?');
         if (name.StartsWith("Work/", StringComparison.Ordinal)) name = name["Work/".Length..];

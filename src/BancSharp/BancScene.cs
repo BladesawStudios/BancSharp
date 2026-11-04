@@ -31,9 +31,47 @@ public sealed record ActorPlacement(
     public IReadOnlyDictionary<string, string>? Equipment { get; init; }
 }
 
+public enum BancEra
+{
+    Any,
+
+    Child,
+
+    Adult,
+}
+
 public static class BancScene
 {
     private const int MaxDepth = 8;
+
+    /// <summary>
+    /// The placement files in a romfs folder, the other era's left out. A scene split into <c>_Static</c> and
+    /// <c>_Dynamic</c> files is those files, not any combined file of the same name beside them.
+    /// </summary>
+    public static List<string> Files(Romfs romfs, string folder, BancEra era = BancEra.Any)
+    {
+        List<string> all = romfs.List(folder, "*.bcett.byml");
+        HashSet<string> split = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string file in all)
+            foreach (string part in new[] { "_Static", "_Dynamic" })
+                if (Stem(file).EndsWith(part, StringComparison.Ordinal))
+                    split.Add(Stem(file)[..^part.Length]);
+
+        return [.. all.Where(file => !split.Contains(Stem(file)) && InEra(Stem(file), era))];
+    }
+
+    internal static bool InEra(string name, BancEra era) => era switch
+    {
+        BancEra.Child => !name.Contains("_Adult", StringComparison.Ordinal),
+        BancEra.Adult => !name.Contains("_Child", StringComparison.Ordinal),
+        _ => true,
+    };
+
+    private static string Stem(string path)
+    {
+        string name = path[(path.LastIndexOf('/') + 1)..];
+        return name[..name.IndexOf('.')];
+    }
 
     public static List<ActorPlacement> Load(Romfs romfs, string path)
     {
