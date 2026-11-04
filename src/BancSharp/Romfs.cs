@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using ZsDicSharp;
 
 namespace BancSharp;
@@ -31,20 +32,43 @@ public sealed class Romfs : IDisposable
         return new Romfs(root, overlay, ZsDic.FromRomfs(root));
     }
 
+    // The names of the files in each folder this romfs has been asked about, listed once: asking the disk about each file is a call of its own, and a placement file asks
+    // about every batch file it names, so a whole map asked about files hundreds of thousands of times. The romfs is opened for one piece of work and the folders do not
+    // change under it, so what is listed stays true for as long as it is open.
+    private readonly ConcurrentDictionary<string, HashSet<string>> _listings = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+    private static readonly StringComparer NameComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
     public string? Resolve(string path)
     {
         string rel = path.Replace('/', Path.DirectorySeparatorChar);
+        if (Overlay is not null && Find(Overlay, rel) is { } mod)
+            return mod;
+        return Find(Root, rel);
+    }
 
-        if (Overlay is not null)
-        {
-            string mod = Path.Combine(Overlay, rel);
-            if (File.Exists(mod)) return mod;
-            if (File.Exists(mod + ".zs")) return mod + ".zs";
-        }
+    // The file at rel under root, with or without .zs, or null.
+    private string? Find(string root, string rel)
+    {
+        string full = Path.Combine(root, rel);
+        if (Path.GetDirectoryName(full) is not { } folder)
+            return null;
 
-        string full = Path.Combine(Root, rel);
-        if (File.Exists(full)) return full;
-        return File.Exists(full + ".zs") ? full + ".zs" : null;
+        HashSet<string> names = _listings.GetOrAdd(folder, static f => NamesIn(f));
+        string name = Path.GetFileName(full);
+        if (names.Contains(name))
+            return full;
+        return names.Contains(name + ".zs") ? full + ".zs" : null;
+    }
+
+    private static HashSet<string> NamesIn(string folder)
+    {
+        HashSet<string> names = new(NameComparer);
+        if (!Directory.Exists(folder))
+            return names;
+        foreach (string file in Directory.EnumerateFiles(folder))
+            names.Add(Path.GetFileName(file));
+        return names;
     }
 
     public bool Exists(string path) => Resolve(path) is not null;
